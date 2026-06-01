@@ -142,41 +142,29 @@ const [assignmentDescription, setAssignmentDescription] = useState("");
   }
 
   async function approveDraft() {
-  if (!draft) return;
+  setMessage("Publishing assignment...");
 
-  const { data: assignment, error: assignmentError } = await supabase
-    .from("assignments")
-    .insert({
-      student_id: draft.student_id,
-      title: assignmentTitle || "AI Homework",
-description: assignmentDescription || "",
-      file_url: draft.pdf_url,
-      latex_source: draft.latex_source,
-      status: "assigned",
-    })
-    .select("id")
-    .single();
+  const response = await fetch(
+    "/api/admin/approve-homework-draft",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        draftId,
+      }),
+    }
+  );
 
-  if (assignmentError) {
-    setMessage(assignmentError.message);
+  const result = await response.json();
+
+  if (!response.ok) {
+    setMessage(result.error ?? "Publish failed.");
     return;
   }
 
-  const { error: draftError } = await supabase
-    .from("homework_drafts")
-    .update({
-      status: "approved",
-      approved_at: new Date().toISOString(),
-      assignment_id: assignment.id,
-    })
-    .eq("id", draftId);
-
-  if (draftError) {
-    setMessage(draftError.message);
-    return;
-  }
-
-  setMessage("Draft approved and published as assignment.");
+  setMessage("Assignment published.");
   loadDraft();
 }
 
