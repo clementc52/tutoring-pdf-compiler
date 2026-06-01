@@ -1,65 +1,132 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import DotBackground from "@/components/DotBackground";
+
+
 
 export default function Home() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function handleLogin() {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    alert("Login failed. Please check your email and password.");
+    return;
+  }
+
+  const user = data.user;
+
+  if (!user) {
+    alert("No user found.");
+    return;
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    alert("Signed in, but no role profile found.");
+    return;
+  }
+
+  if (profile.role === "admin") {
+    router.push("/tutor/dashboard");
+    return;
+  }
+
+  if (profile.role === "student" || profile.role === "parent") {
+    router.push("/student/loading");
+    return;
+  }
+
+  alert("Unknown role.");
+}
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-[#080808] text-[#e8e8e8]">
+      <DotBackground />
+
+      <section className="relative mx-auto flex min-h-screen max-w-[1100px] items-center px-8">
+        <div className="max-w-[520px]">
+          <p className="mb-10 text-[13px] uppercase tracking-[0.32em] text-[#777]">
+            • Student Portal
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+          <h1 className="typing-title text-[68px] font-semibold leading-[0.95] tracking-[-0.04em]">
+            welcome back.
+          </h1>
+
+          <p className="mt-8 max-w-[460px] text-[19px] leading-9 text-[#8f8f8f]">
+            Please log in to access your profile.
+          </p>
+
+          <form className="mt-12 space-y-4">
+            <input
+              type="email"
+              placeholder="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-[#ffffff20] bg-transparent px-5 py-4 text-[15px] tracking-wide text-white outline-none placeholder:text-[#666] focus:border-[#ffffff55]"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+            <input
+              type="password"
+              placeholder="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-[#ffffff20] bg-transparent px-5 py-4 text-[15px] tracking-wide text-white outline-none placeholder:text-[#666] focus:border-[#ffffff55]"
+            />
+
+            <button
+              type="button"
+              onClick={handleLogin}
+              className="mt-4 border border-[#ffffff20] px-7 py-3 text-[13px] uppercase tracking-[0.22em] text-[#aaa] hover:border-[#ffffff55] hover:text-white"
+            >
+              login
+            </button>
+          </form>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <footer className="absolute bottom-0 left-0 right-0 border-t border-[#ffffff10] py-5">
+        <div className="mx-auto max-w-[1100px] px-8 text-[12px] tracking-[0.15em] text-[#666]">
+          © Copyright Clement & Leo 2026
+        </div>
+      </footer>
+
+      <style>{`
+        @keyframes typing {
+          from { width: 0; }
+          to { width: 13ch; }
+        }
+
+        @keyframes blink {
+          50% { border-color: transparent; }
+        }
+
+        .typing-title {
+          overflow: hidden;
+          white-space: nowrap;
+          border-right: 3px solid #e8e8e8;
+          width: 0;
+          animation:
+            typing 1.6s steps(13, end) forwards,
+            blink 0.8s step-end infinite;
+        }
+      `}</style>
+    </main>
   );
 }
