@@ -1,5 +1,12 @@
 import express from "express";
 import cors from "cors";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileAsync = promisify(execFile);
 
 const app = express();
 
@@ -8,6 +15,63 @@ app.use(express.json({ limit: "50mb" }));
 
 app.get("/", (req, res) => {
   res.send("PDF compiler online");
+});
+
+app.post("/compile", async (req, res) => {
+  try {
+    const { latex } = req.body;
+
+    if (!latex) {
+      return res.status(400).json({
+        error: "Missing latex source",
+      });
+    }
+
+    const tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "latex-")
+    );
+
+    const texPath = path.join(tempDir, "document.tex");
+
+    await fs.writeFile(
+      texPath,
+      latex,
+      "utf8"
+    );
+
+    await execFileAsync(
+      "pdflatex",
+      [
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "document.tex",
+      ],
+      {
+        cwd: tempDir,
+      }
+    );
+
+    const pdfPath = path.join(
+      tempDir,
+      "document.pdf"
+    );
+
+    const pdfBuffer = await fs.readFile(pdfPath);
+
+    const pdfBase64 = pdfBuffer.toString("base64");
+
+    res.json({
+      success: true,
+      pdfBase64,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      error: String(err),
+    });
+  }
 });
 
 app.listen(process.env.PORT || 3000, () => {
