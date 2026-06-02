@@ -9,6 +9,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(request: Request) {
+    console.log("RAILWAY VERSION");
   try {
     const body = await request.json();
     const draftId = body.draftId;
