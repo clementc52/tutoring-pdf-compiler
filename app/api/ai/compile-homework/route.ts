@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
-import { execFile } from "child_process";
-import { promisify } from "util";
 
 export const runtime = "nodejs";
-
-const execFileAsync = promisify(execFile);
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,7 +14,10 @@ export async function POST(request: Request) {
     const draftId = body.draftId;
 
     if (!draftId) {
-      return NextResponse.json({ error: "Missing draftId." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing draftId." },
+        { status: 400 }
+      );
     }
 
     const { data: draft, error: draftError } = await supabaseAdmin
@@ -30,8 +26,11 @@ export async function POST(request: Request) {
       .eq("id", draftId)
       .single();
 
-    if (draftError) {
-      return NextResponse.json({ error: draftError.message }, { status: 500 });
+    if (draftError || !draft) {
+      return NextResponse.json(
+        { error: draftError?.message ?? "Draft not found." },
+        { status: 500 }
+      );
     }
 
     const latex = draft.latex_source;
@@ -43,21 +42,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "homework-"));
-    const texPath = path.join(tempDir, "homework.tex");
-    const pdfPath = path.join(tempDir, "homework.pdf");
-
-    await fs.writeFile(texPath, latex, "utf8");
-
-    await execFileAsync(
-      "/Library/TeX/texbin/pdflatex",
-      ["-interaction=nonstopmode", "-halt-on-error", "homework.tex"],
+    const compileResponse = await fetch(
+      "https://tutoring-pdf-compiler-production.up.railway.app/compile",
       {
-        cwd: tempDir,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latex,
+        }),
       }
     );
 
-    const pdfBuffer = await fs.readFile(pdfPath);
+    const compileResult = await compileResponse.json();
+
+    if (!compileResult.success) {
+      return NextResponse.json(
+        {
+          error: compileResult.error,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const pdfBuffer = Buffer.from(
+      compileResult.pdfBase64,
+      "base64"
+    );
 
     const filePath = `${draftId}/homework.pdf`;
 
@@ -69,7 +83,14 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: uploadError.message,
+        },
+        {
+          status: 500,
+        }
+      );
     }
 
     const { data: publicUrlData } = supabaseAdmin.storage
@@ -87,11 +108,18 @@ export async function POST(request: Request) {
       .eq("id", draftId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: updateError.message,
+        },
+        {
+          status: 500,
+        }
+      );
     }
 
     return NextResponse.json({
-      message: "PDF compiled.",
+      success: true,
       pdf_url: pdfUrl,
     });
   } catch (err: any) {
