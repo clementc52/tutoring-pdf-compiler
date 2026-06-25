@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import fs from "fs/promises";
+import https from "https";
 import path from "path";
 import os from "os";
 import { execFile } from "child_process";
@@ -17,9 +18,31 @@ app.get("/", (req, res) => {
   res.send("PDF compiler online");
 });
 
+async function downloadFile(url, destination) {
+  return new Promise((resolve, reject) => {
+    const file = require("fs").createWriteStream(destination);
+
+    https.get(url, response => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Download failed: ${response.statusCode}`));
+        return;
+      }
+
+      response.pipe(file);
+
+      file.on("finish", () => {
+        file.close(resolve);
+      });
+    }).on("error", reject);
+  });
+}
+
 app.post("/compile", async (req, res) => {
   try {
-    const { latex } = req.body;
+    const {
+  latex,
+  imageDownloads = [],
+} = req.body;
 
     if (!latex) {
       return res.status(400).json({
@@ -38,6 +61,13 @@ app.post("/compile", async (req, res) => {
       latex,
       "utf8"
     );
+
+    for (const image of imageDownloads) {
+  await downloadFile(
+    image.url,
+    path.join(tempDir, image.filename)
+  );
+}
 
     await execFileAsync(
       "pdflatex",
