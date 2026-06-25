@@ -94,14 +94,23 @@ app.post("/compile", async (req, res) => {
       success: true,
       pdfBase64,
     });
-  } catch (err) {
-    console.error(err);
+  } catch (err: any) {
+  console.error("===== FULL ERROR =====");
+  console.error(err);
 
-    res.status(500).json({
-      success: false,
-      error: String(err),
-    });
-  }
+  console.error("===== STDOUT =====");
+  console.error(err.stdout);
+
+  console.error("===== STDERR =====");
+  console.error(err.stderr);
+
+  res.status(500).json({
+    success: false,
+    error: err.message,
+    stdout: err.stdout,
+    stderr: err.stderr,
+  });
+}
 });
 
 app.listen(process.env.PORT || 3000, () => {
