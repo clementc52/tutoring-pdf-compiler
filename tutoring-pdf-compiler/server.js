@@ -94,7 +94,7 @@ app.post("/compile", async (req, res) => {
       success: true,
       pdfBase64,
     });
-  } catch (err: any) {
+  } catch (err) {
   console.error("===== FULL ERROR =====");
   console.error(err);
 
