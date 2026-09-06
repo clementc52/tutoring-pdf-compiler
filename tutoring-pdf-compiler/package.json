@@ -4,8 +4,10 @@
   "main": "server.js",
   "type": "module",
   "dependencies": {
+    "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "express": "^4.19.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "katex": "^0.17.0"
   },
   "scripts": {
     "start": "node server.js"
